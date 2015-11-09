@@ -3,18 +3,32 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 """ Model gravitational attraction between bodies. Uses a Planet class to
 tidy code
 """
+import logging
 import numpy as np
 import math
+from time import sleep
 #from numpy import sqrt, sin, cos, radians, pi, add, subtract, array, tile
-import demo
 import pi3d
-pi3d.util.Log.set_logs(level='DEBUG', file='/home/pi/log')
-LOGGER = pi3d.util.Log.logger('Asteroid')
+LOGGER = logging.getLogger('asteroid')
+LOGGER.setLevel(logging.DEBUG)
+# create file handler which logs even debug messages
+fh = logging.FileHandler('/home/pi/asteroid.log')
+fh.setLevel(logging.DEBUG)
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+# create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+# add the handlers to the logger
+LOGGER.addHandler(fh)
+LOGGER.addHandler(ch)
 
 ##################################################################
 # Planet  class based on a pi3d.Sphere but with some added properties
 class Planet(pi3d.Sphere):
-  def __init__(self, textures, shader, radius, density, pos=[0.0, 0.0, 0.0],
+  def __init__(self, name, textures, shader, radius, density, pos=[0.0, 0.0, 0.0],
               vel=[0.0, 0.0, 0.0], acc=[0.0, 0.0, 0.0], track_shader=None,
               light=None):
     """arguments generally self explanatory; textures is a list of Textures
@@ -33,6 +47,7 @@ class Planet(pi3d.Sphere):
     super(Planet, self).set_draw_details(shader, [textures[0]])
     if light is not None:
       self.set_light(light)
+    self.name = name
     self.pos = np.array(pos)
     self.vel = np.array(vel)
     self.acc = np.array(acc)
@@ -73,7 +88,9 @@ class Planet(pi3d.Sphere):
     self.acc = force / self.mass
     self.vel += self.acc * DT
     self.pos += self.vel * DT
-    
+    # LOGGER.debug('Planet %s: acc = %s vel = %s pos = %s' % (self.name, self.acc, self.vel, self.pos))    
+
+
   def position_and_draw(self):
     self.position(*self.pos)
     self.rotateIncY(self.rotation)
@@ -99,19 +116,21 @@ class Asteroid(Planet):
     self.textures = [ast_text]
     self.radius = 0.01
     self.density = 8000000
-    self.pos = [0.0, -1.0, -9.1]
-    self.vel = [-0.3, 0.5, 0.0]
+    self.pos = [0.0, -3.0, -9.1]
+    self.vel = [-0.3, 0.17, 0.0]
     self.acc = [0.0, 0.0, 0.0]
     self.track_shader = track_shader 
     self.light = light
     self.shader = shader
-    super(Asteroid, self).__init__(self.textures, self.shader, self.radius, self.density, self.pos, self.vel, self.acc, self.track_shader, self.light)
+    self.name = 'asteroid'
+    super(Asteroid, self).__init__(self.name, self.textures, self.shader, self.radius, self.density, self.pos, self.vel, self.acc, self.track_shader, self.light)
 
   def collusion_detection(self, body):
     dirctn = body.pos - self.pos
     dist = ((dirctn ** 2.0).sum()) ** 0.5
-    LOGGER.debug(dist)
-    if dist <= 0:
+    LOGGER.debug('Distance from %s to %s: %s' % (self.name, body.name, dist))
+    if dist <= 1.7:
+      LOGGER.debug('Distance too close')
       return True
     else:
       return False
@@ -144,11 +163,11 @@ sunlight = pi3d.Light(is_point=True, lightpos=(0, 0, 0), # from the sun
           lightcol=(100.0, 100.0, 100.0), lightamb=(1.05, 1.05, 1.05))
 selflight = pi3d.Light(lightamb=(1.1, 1.1, 1.1)) # on the sun
 # Planets --------------------------------
-sun = Planet([sunimg, sunshellimg], shader, 1.0, 8000000, pos=[0.0, 0.0, 0.0],
+sun = Planet('sun', [sunimg, sunshellimg], shader, 1.0, 8000000, pos=[0.0, 0.0, 0.0],
             vel=[-0.01, 0.0, 0.0], light=selflight) #to keep total momentum of system zero!
-earth = Planet([earthimg, cloudimg], shader, 0.125, 80000000, pos=[0.0, -1.0, -9.0], 
+earth = Planet('earth', [earthimg, cloudimg], shader, 0.125, 80000000, pos=[0.0, -1.0, -9.0], 
             vel=[0.5, 0.1, 0.0], track_shader=None, light=sunlight)
-moon = Planet([moonimg], shader, 0.025, 80000000, pos=[0.0, -1.0, -9.6], 
+moon = Planet('moon', [moonimg], shader, 0.025, 80000000, pos=[0.0, -1.0, -9.6], 
             vel=[0.72, 0.144, 0.0], track_shader=None, light=sunlight)
 asteroid = Asteroid(shader, track_shader=tracksh, light=sunlight)
 # Fetch key presses ----------------------
@@ -161,7 +180,6 @@ rot = 0
 tilt = 0
 rottilt = True
 camRad = [-13.5, -13.5, -13.5]
-LOGGER.debug("TESTING")
 # Display scene
 while DISPLAY.loop_running():
   if rottilt:
@@ -177,14 +195,15 @@ while DISPLAY.loop_running():
   moon.position_and_draw()
   asteroid.position_and_draw()
   myecube.draw()
-  print('DOES THIS PRINT') 
   # Check for collusion
   if asteroid.collusion_detection(earth):
     # Freeze 
     # zoom in on earth
+    CAMERA.relocate(rot, tilt, earth.pos, camRad)
+    sleep(60)
     # redraw
     # check for key and exit
-    mymkeys.close()
+    #mymkeys.close()
     DISPLAY.destroy()
     break
 
@@ -208,5 +227,3 @@ while DISPLAY.loop_running():
       DISPLAY.destroy()
       break
 
-print('DOES IT PRINT')
-LOGGER.debug("TESTING")
