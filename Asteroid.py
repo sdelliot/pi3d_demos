@@ -125,7 +125,17 @@ class Asteroid(Planet):
     self.name = 'asteroid'
     super(Asteroid, self).__init__(self.name, self.textures, self.shader, self.radius, self.density, self.pos, self.vel, self.acc, self.track_shader, self.light)
 
-  def collusion_detection(self, body):
+
+  def collide(self, body):
+    # Moving the asteroid closer to the body
+    inc = 0.001
+    for i,j in zip(self.pos, body.pos):
+      if j > i:
+        i += inc
+      if j < i:
+        i -= inc
+  
+  def collision_detection(self, body):
     dirctn = body.pos - self.pos
     dist = ((dirctn ** 2.0).sum()) ** 0.5
     LOGGER.debug('Distance from %s to %s: %s' % (self.name, body.name, dist))
@@ -196,7 +206,7 @@ while DISPLAY.loop_running():
   asteroid.position_and_draw()
   myecube.draw()
   # Check for collusion
-  if asteroid.collusion_detection(earth):
+  if asteroid.collision_detection(earth):
     # Freeze 
     # zoom in on earth
     CAMERA.relocate(rot, tilt, earth.pos, camRad)
