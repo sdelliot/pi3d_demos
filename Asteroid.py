@@ -189,8 +189,14 @@ mymouse.start()
 rot = 0
 tilt = 0
 rottilt = True
-camRad = [-13.5, -13.5, -13.5]
+camRad = [-15.0, -15.0, -15.0]
+f = pi3d.Font("fonts/FreeSans.ttf", (0xff, 0xff, 0xff, 255))
+s = pi3d.String(font=f, string="year 2015", sx=.02, sy=.02)
+s.translate(-0.0, 1.5, 0.0)
+s.set_shader(flatsh)
+
 # Display scene
+year_ctr = 0
 while DISPLAY.loop_running():
   if rottilt:
     CAMERA.relocate(rot, tilt, [0.0, 0.0, 0.0], camRad)
@@ -205,17 +211,14 @@ while DISPLAY.loop_running():
   moon.position_and_draw()
   asteroid.position_and_draw()
   myecube.draw()
-  # Check for collusion
-  if asteroid.collision_detection(earth):
-    # Freeze 
-    # zoom in on earth
-    CAMERA.relocate(rot, tilt, earth.pos, camRad)
-    sleep(60)
-    # redraw
-    # check for key and exit
-    #mymkeys.close()
-    DISPLAY.destroy()
-    break
+  s.draw()
+
+  if year_ctr % 1200 == 0:
+    year = year_ctr/1200+2015
+    s = pi3d.String(font=f, string="year %d" % year, sx=.02, sy=.02)
+    s.translate(-0.0, 1.5, 0.0)
+    s.set_shader(flatsh)
+  year_ctr += 1
 
   mx, my = mymouse.position()
   if rot != (mx * -0.1) or tilt != (my * 0.1):
